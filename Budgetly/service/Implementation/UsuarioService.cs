@@ -8,7 +8,7 @@ namespace Budgetly.Services
 {
     public class UsuarioService : IUsuarioService
     {
-        private readonly ApplicationDBContext _context;
+        private readonly ApplicationDBContext _context; //instancia del contexto
 
         // Inyección de dependencias
         public UsuarioService(ApplicationDBContext context)
@@ -16,16 +16,11 @@ namespace Budgetly.Services
             _context = context;
         }
 
-        // 1. Obtener el perfil del único usuario
-        public async Task<UsuarioDTO?> ObtenerPerfilAsync()
-        {
-            // Asumimos que solo hay un usuario
+        public async Task<UsuarioDTO?> ObtenerPerfilAsync(){
+            //obtener al primer usaurio solo hay un unico usuario
             var usuario = await _context.Usuarios.FirstOrDefaultAsync();
-
-            if (usuario == null) return null;
-
-            // Mapeamos de la entidad Usuario al DTO
-            return new UsuarioDTO
+            //si no existe que devuelva nulo y si devuelve el objeto
+            return usuario == null ? null : new UsuarioDTO
             {
                 Id = usuario.Id,
                 NombreUsuario = usuario.NombreUsuario,
@@ -34,29 +29,27 @@ namespace Budgetly.Services
                 FechaRegistro = usuario.FechaRegistro,
                 EsAutenticadoGoogle = usuario.EsAutenticadoGoogle
             };
-        }
+        } 
 
-        // 2. Crear el único usuario
-        public async Task<UsuarioDTO> CrearAsync(UsuarioCreateDTO dto)
-        {
-            // Verificar si ya existe el usuario
-            var usuarioExistente = await _context.Usuarios.FirstOrDefaultAsync(u => u.CorreoElectronico == dto.CorreoElectronico);
-            if (usuarioExistente != null) throw new Exception("Ya existe un usuario con ese correo electrónico.");
+        
+        public async Task<UsuarioDTO> CrearAsync(UsuarioCreateDTO usuarioCreateDTO){
+            //verificar que no exista ya en el sistema, por su correo electronico 
+            var usaurioExistente = await _context.Usuarios.FirstOrDefaultAsync(u => u.CorreoElectronico == usuarioCreateDTO.CorreoElectronico);
+            if(usaurioExistente != null) throw new Exception ("Ya existe un usuario con ese correo electronnico");
 
-            // Convertir el DTO a la entidad Usuario
-            var nuevoUsuario = new Usuario
-            {
-                NombreUsuario = dto.NombreUsuario,
-                CorreoElectronico = dto.CorreoElectronico,
-                PassWordHash = HashPassword(dto.Clave), // Usamos un método de hash
-                Telefono = dto.Telefono,
+            //convertir el DTO en la entidad Usuario 
+            var nuevoUsuario = new Usuario{
+                NombreUsuario = usuarioCreateDTO.NombreUsuario,
+                CorreoElectronico = usuarioCreateDTO.CorreoElectronico,
+                PassWordHash = HashPassword(usuarioCreateDTO.Clave), //// se hashea la clave
+                Telefono = usuarioCreateDTO.Telefono,
                 FechaRegistro = DateTime.UtcNow,
-                EsAutenticadoGoogle = false // Inicialmente no está autenticado con Google
+                EsAutenticadoGoogle = false, //porque no esta autentcado con google inicialmente
             };
 
-            // Agregar el usuario y guardar cambios
+            //Agrega al Usuario y guarda cambios
             _context.Usuarios.Add(nuevoUsuario);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); 
 
             // Convertir la entidad creada a DTO para devolverla
             return new UsuarioDTO
@@ -67,12 +60,13 @@ namespace Budgetly.Services
                 Telefono = nuevoUsuario.Telefono,
                 FechaRegistro = nuevoUsuario.FechaRegistro,
                 EsAutenticadoGoogle = nuevoUsuario.EsAutenticadoGoogle
-            };
+            };           
         }
 
         // 3. Actualizar los datos del usuario
         public async Task<bool> ActualizarAsync(UsuarioUpdateDTO dto)
         {
+            //verificar que el usuario exista
             var usuario = await _context.Usuarios.FirstOrDefaultAsync();
 
             if (usuario == null) return false;
@@ -80,7 +74,6 @@ namespace Budgetly.Services
             // Actualizar los datos
             usuario.NombreUsuario = dto.NombreUsuario ?? usuario.NombreUsuario;
             usuario.Telefono = dto.Telefono ?? usuario.Telefono;
-            usuario.EsAutenticadoGoogle = dto.EsAutenticadoGoogle ?? usuario.EsAutenticadoGoogle;
 
             // Guardar cambios
             _context.Usuarios.Update(usuario);
