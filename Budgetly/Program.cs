@@ -1,4 +1,15 @@
+using Budgetly.data;
+using Budgetly.Extensions; // Para usar AddServices() DE TOTOS LOS SERVICIOS 
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Inyectar el DbContext
+builder.Services.AddDbContext<ApplicationDBContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Inyectar servicios (modular desde ServiceRegistration.cs)
+builder.Services.AddServices(); // 👈 Tu clase Extension
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -9,7 +20,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -20,6 +30,7 @@ app.UseRouting();
 
 app.UseAuthorization();
 
+// Definir rutas
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
