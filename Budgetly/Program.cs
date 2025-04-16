@@ -9,7 +9,7 @@ builder.Services.AddDbContext<ApplicationDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Inyectar servicios (modular desde ServiceRegistration.cs)
-builder.Services.AddServices(); // 👈 Tu clase Extension
+builder.Services.AddServices(); //  clase Extension
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

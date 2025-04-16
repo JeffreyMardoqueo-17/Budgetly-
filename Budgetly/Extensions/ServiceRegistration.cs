@@ -15,7 +15,7 @@ namespace Budgetly.Extensions
             services.AddScoped<IUsuarioService, UsuarioService>();
             //aqui voya  agregar los demas servicios para inyectarlos  al program
              services.AddSingleton<IEmailVerificationService, EmailVerificationService>(); // Singleton porque mantiene código temporal
-            services.AddTransient<EmailService>();
+            services.AddTransient<IEmailService,EmailService>();
 
         }
     }
