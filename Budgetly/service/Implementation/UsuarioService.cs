@@ -3,18 +3,22 @@ using Budgetly.Models.DTOs;
 using Budgetly.service.interfaces;
 using Microsoft.EntityFrameworkCore;
 using Budgetly.data;
+using Budgetly.Services.Auth;
+using Budgetly.service.Email;
 
 namespace Budgetly.Services
 {
     public class UsuarioService : IUsuarioService
     {
         private readonly ApplicationDBContext _context; //instancia del contexto
+        private readonly IEmailVerificationService _emailVerificationService;
 
-        // Inyección de dependencias
-        public UsuarioService(ApplicationDBContext context)
-        {
-            _context = context;
-        }
+public UsuarioService(ApplicationDBContext context, IEmailVerificationService emailVerificationService)
+{
+    _context = context;
+    _emailVerificationService = emailVerificationService;
+}
+
 
         public async Task<UsuarioDTO?> ObtenerPerfilAsync(){
             //obtener al primer usaurio solo hay un unico usuario
@@ -31,37 +35,43 @@ namespace Budgetly.Services
             };
         } 
 
-        
-        public async Task<UsuarioDTO> CrearAsync(UsuarioCreateDTO usuarioCreateDTO){
-            //verificar que no exista ya en el sistema, por su correo electronico 
-            var usaurioExistente = await _context.Usuarios.FirstOrDefaultAsync(u => u.CorreoElectronico == usuarioCreateDTO.CorreoElectronico);
-            if(usaurioExistente != null) throw new Exception ("Ya existe un usuario con ese correo electronnico");
+        public async Task<UsuarioDTO> CrearAsync(UsuarioCreateDTO usuarioCreateDTO)
+{
+    var usaurioExistente = await _context.Usuarios
+        .FirstOrDefaultAsync(u => u.CorreoElectronico == usuarioCreateDTO.CorreoElectronico);
 
-            //convertir el DTO en la entidad Usuario 
-            var nuevoUsuario = new Usuario{
-                NombreUsuario = usuarioCreateDTO.NombreUsuario,
-                CorreoElectronico = usuarioCreateDTO.CorreoElectronico,
-                PassWordHash = HashPassword(usuarioCreateDTO.Clave), //// se hashea la clave
-                Telefono = usuarioCreateDTO.Telefono,
-                FechaRegistro = DateTime.UtcNow,
-                EsAutenticadoGoogle = false, //porque no esta autentcado con google inicialmente
-            };
+    if (usaurioExistente != null)
+        throw new Exception("Ya existe un usuario con ese correo electrónico.");
 
-            //Agrega al Usuario y guarda cambios
-            _context.Usuarios.Add(nuevoUsuario);
-            await _context.SaveChangesAsync(); 
+    // Verificar que el correo fue validado
+    if (!_emailVerificationService.IsEmailVerified(usuarioCreateDTO.CorreoElectronico))
+        throw new Exception("El correo electrónico no ha sido verificado.");
 
-            // Convertir la entidad creada a DTO para devolverla
-            return new UsuarioDTO
-            {
-                Id = nuevoUsuario.Id,
-                NombreUsuario = nuevoUsuario.NombreUsuario,
-                CorreoElectronico = nuevoUsuario.CorreoElectronico,
-                Telefono = nuevoUsuario.Telefono,
-                FechaRegistro = nuevoUsuario.FechaRegistro,
-                EsAutenticadoGoogle = nuevoUsuario.EsAutenticadoGoogle
-            };           
-        }
+    var nuevoUsuario = new Usuario
+    {
+        NombreUsuario = usuarioCreateDTO.NombreUsuario,
+        CorreoElectronico = usuarioCreateDTO.CorreoElectronico,
+        PassWordHash = HashPassword(usuarioCreateDTO.Clave),
+        Telefono = usuarioCreateDTO.Telefono,
+        FechaRegistro = DateTime.UtcNow,
+        EsAutenticadoGoogle = false,
+    };
+
+    _context.Usuarios.Add(nuevoUsuario);
+    await _context.SaveChangesAsync();
+
+    _emailVerificationService.RemoveVerifiedEmail(usuarioCreateDTO.CorreoElectronico); // Limpiar
+
+    return new UsuarioDTO
+    {
+        Id = nuevoUsuario.Id,
+        NombreUsuario = nuevoUsuario.NombreUsuario,
+        CorreoElectronico = nuevoUsuario.CorreoElectronico,
+        Telefono = nuevoUsuario.Telefono,
+        FechaRegistro = nuevoUsuario.FechaRegistro,
+        EsAutenticadoGoogle = nuevoUsuario.EsAutenticadoGoogle
+    };
+}
 
         // 3. Actualizar los datos del usuario
         public async Task<bool> ActualizarAsync(UsuarioUpdateDTO dto)
